@@ -1,0 +1,128 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نتائج الثانوية العامة</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+    }
+    .percentage-circle {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: conic-gradient(#4caf50 calc(var(--percentage) * 1%), #e5e7eb calc(var(--percentage) * 1%));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin: 0 auto;
+    }
+    .percentage-circle::before {
+      content: attr(data-percentage) '%';
+      position: absolute;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #1f2937;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="container mx-auto p-4">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-md mx-auto">
+      <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">استعلام عن نتائج الثانوية العامة</h1>
+      <div class="mb-4">
+        <label for="studentId" class="block text-gray-700 font-semibold text-lg mb-2">رقم الجلوس</label>
+        <input type="text" id="studentId" placeholder="أدخل رقم الجلوس" class="w-full p-3 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <button onclick="getResult()" class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg text-lg hover:bg-blue-700 transition duration-300">عرض النتيجة</button>
+      <div id="result" class="mt-6 text-center hidden">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-4">النتيجة</h2>
+        <div id="percentageCircle" class="percentage-circle mb-4" style="--percentage: 0;"></div>
+        <p id="studentName" class="text-xl text-gray-800 font-semibold"></p>
+        <p id="studentGrade" class="text-xl text-gray-800 font-semibold"></p>
+        <p id="studentStatus" class="text-xl font-semibold"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function getResult() {
+      const studentId = document.getElementById('studentId').value;
+      const resultDiv = document.getElementById('result');
+      const studentName = document.getElementById('studentName');
+      const studentGrade = document.getElementById('studentGrade');
+      const studentStatus = document.getElementById('studentStatus');
+      const percentageCircle = document.getElementById('percentageCircle');
+
+      // بيانات تجريبية (تم تحديث اسم الطالب)
+      const mockData = {
+        '12345': { name: 'محمد أحمد', grade: '85%', status: 'ناجح' },
+        '67890': { name: 'فاطمة علي', grade: '92%', status: 'ناجح' },
+        '232009': { name: 'محمد سامح عبدالرحمن الشناوي', grade: '76%', status: 'ناجح' }
+      };
+
+      if (studentId in mockData) {
+        resultDiv.classList.remove('hidden');
+        const percentage = parseInt(mockData[studentId].grade);
+        percentageCircle.style.setProperty('--percentage', percentage);
+        percentageCircle.setAttribute('data-percentage', percentage);
+        studentName.textContent = 'الاسم: ' + mockData[studentId].name;
+        studentGrade.textContent = 'الدرجة: ' + mockData[studentId].grade;
+        studentStatus.textContent = 'الحالة: ' + mockData[studentId].status;
+        studentStatus.style.color = '#4caf50'; // اللون الأخضر لكلمة ناجح
+      } else {
+        resultDiv.classList.remove('hidden');
+        percentageCircle.style.setProperty('--percentage', 0);
+        percentageCircle.setAttribute('data-percentage', 0);
+        studentName.textContent = '';
+        studentGrade.textContent = '';
+        studentStatus.textContent = 'رقم الجلوس غير موجود';
+        studentStatus.style.color = '#ef4444'; // اللون الأحمر للخطأ
+      }
+    }
+  </script>
+</body>
+</html>
